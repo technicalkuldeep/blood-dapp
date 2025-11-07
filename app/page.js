@@ -1,4 +1,3 @@
-// app/page.js
 "use client";
 
 import { useEffect, useState } from "react";
@@ -134,130 +133,188 @@ export default function Home() {
   }
 
   return (
-    <main style={{ background: "#0a0a0a", color: "#e5e5e5", minHeight: "100vh", fontFamily: "Inter, sans-serif", padding: 24 }}>
-      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+    <main style={styles.main}>
+      {/* Header */}
+      <header style={styles.header}>
         <div>
-          <h1 style={{ margin: 0 }}>🩸 Blood Donation Dashboard</h1>
-          <div style={{ color: "#aaa", fontSize: 13 }}>KWALA Integrated — Admin: {CONFIG.ADMIN}</div>
+          <h1 style={styles.title}>🩸 KWALA BLOODVERSE</h1>
+          <p style={styles.subtitle}>Gamified Blood Donation Platform</p>
+          <div style={styles.adminLine}>
+            <span>Admin Wallet: </span>
+            <b>{CONFIG.ADMIN}</b>
+          </div>
         </div>
 
         <div>
           {connected ? (
-            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-              <div style={{ color: isAdmin ? "#ffd36b" : "#9ad1ff", fontSize: 13 }}>
-                {isAdmin ? "Admin (connected)" : "Donor (connected)"}
+            <div style={styles.walletBox}>
+              <div
+                style={{
+                  color: isAdmin ? "#FFD36B" : "#5BD1FF",
+                  fontSize: 13,
+                  fontWeight: "600"
+                }}
+              >
+                {isAdmin ? "👑 Admin Connected" : "🧬 Donor Connected"}
               </div>
-              <div style={{ background: "#111", padding: "8px 12px", borderRadius: 8, border: "1px solid #222" }}>{connected.slice(0, 6)}…{connected.slice(-4)}</div>
+              <div style={styles.walletAddr}>
+                {connected.slice(0, 6)}…{connected.slice(-4)}
+              </div>
             </div>
           ) : (
-            <button onClick={connectWallet} style={{ background: "#ff4655", color: "#fff", border: "none", padding: "8px 12px", borderRadius: 8 }}>Connect Wallet</button>
+            <button onClick={connectWallet} style={styles.connectBtn}>
+              ⚡ Connect Wallet
+            </button>
           )}
         </div>
       </header>
 
+      {/* Admin Form */}
       {isAdmin && (
-        <section style={{ background: "#141414", padding: 16, borderRadius: 12, border: "1px solid #222", marginBottom: 20 }}>
-          <h2 style={{ fontSize: "1.2rem", marginBottom: "1rem" }}>Create Blood Request</h2>
-
-          <form onSubmit={createRequest} style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
-            <input name="bloodGroup" placeholder="Blood Group (A+)" required style={inputStyle} />
-            <input name="location" placeholder="Location" required style={inputStyle} />
-            <input name="quantity" type="number" placeholder="Units" required style={inputStyle} />
-            <input name="contact" placeholder="Contact Info" required style={inputStyle} />
-            <button type="submit" style={createBtnStyle}>+ Create Request</button>
+        <section style={styles.card}>
+          <h2 style={styles.sectionTitle}>🩸 Create Blood Request</h2>
+          <form onSubmit={createRequest} style={styles.form}>
+            <input name="bloodGroup" placeholder="Blood Group (A+)" required style={styles.input} />
+            <input name="location" placeholder="Location" required style={styles.input} />
+            <input name="quantity" type="number" placeholder="Units" required style={styles.input} />
+            <input name="contact" placeholder="Contact Info" required style={styles.input} />
+            <button type="submit" style={styles.primaryBtn}>
+              + Create Request
+            </button>
           </form>
         </section>
       )}
 
-      <section style={{ marginBottom: 20, background: "#141414", padding: 16, borderRadius: 12, border: "1px solid #222" }}>
-        <h2 style={{ marginTop: 0 }}>Open Requests</h2>
-
-        {loading ? <p>Loading on-chain data…</p> : requests.length === 0 ? <p>No active requests.</p> : (
-          <table style={{ width: "100%", borderCollapse: "collapse", color: "#ddd" }}>
-            <thead>
-              <tr style={{ textAlign: "left", background: "#1b1b1b" }}>
-                <th style={{ padding: 8 }}>ID</th>
-                <th style={{ padding: 8 }}>Group</th>
-                <th style={{ padding: 8 }}>Location</th>
-                <th style={{ padding: 8 }}>Qty</th>
-                <th style={{ padding: 8 }}>Status</th>
-                <th style={{ padding: 8 }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {requests.map(r => (
-                <tr key={r.id} style={{ borderBottom: "1px solid #222" }}>
-                  <td style={{ padding: 8 }}>{r.id}</td>
-                  <td style={{ padding: 8 }}>{r.bloodGroup}</td>
-                  <td style={{ padding: 8 }}>{r.location}</td>
-                  <td style={{ padding: 8 }}>{r.quantity}</td>
-                  <td style={{ padding: 8, color: r.status === "Fulfilled" ? "#2ecc71" : "#fff" }}>{r.status}</td>
-                  <td style={{ padding: 8 }}>
-                    <button onClick={() => openInterested(r.id)} style={smallBtn}>Show Interested</button>{" "}
-                    {isAdmin && <button onClick={() => openInterested(r.id)} style={{ ...smallBtn, background: "#8b5cf6" }}>Manage</button>}
-                  </td>
+      {/* Open Requests */}
+      <section style={styles.card}>
+        <h2 style={styles.sectionTitle}>🧾 Active Requests</h2>
+        {loading ? (
+          <p>Loading on-chain data…</p>
+        ) : requests.length === 0 ? (
+          <p>No active requests.</p>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Group</th>
+                  <th>Location</th>
+                  <th>Qty</th>
+                  <th>Status</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {requests.map((r) => (
+                  <tr key={r.id}>
+                    <td>{r.id}</td>
+                    <td style={{ color: "#ff4655" }}>{r.bloodGroup}</td>
+                    <td>{r.location}</td>
+                    <td>{r.quantity}</td>
+                    <td style={{ color: r.status === "Fulfilled" ? "#2ecc71" : "#FFD36B" }}>
+                      {r.status}
+                    </td>
+                    <td>
+                      <button onClick={() => openInterested(r.id)} style={styles.smallBtn}>
+                        View Donors
+                      </button>
+                      {isAdmin && (
+                        <button
+                          onClick={() => openInterested(r.id)}
+                          style={{ ...styles.smallBtn, background: "#8b5cf6" }}
+                        >
+                          Manage
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
-      <section style={{ background: "#141414", padding: 16, borderRadius: 12, border: "1px solid #222", marginBottom: 20 }}>
-        <h3 style={{ marginTop: 0 }}>⚡ KWALA Live Events</h3>
-        {events.length === 0 ? <p style={{ color: "#777" }}>No events yet</p> : events.slice(0, 10).map((e, i) => (
-          <div key={i} style={{ background: "#1a1a1a", padding: 8, borderRadius: 8, marginBottom: 8 }}>
-            <b style={{ color: "#ff4655" }}>{e.body.event}</b> — <span style={{ color: "#ccc" }}>{JSON.stringify(e.body)}</span>
-            <div style={{ fontSize: 12, color: "#666" }}>{new Date(e.timestamp).toLocaleTimeString()}</div>
-          </div>
-        ))}
+      {/* Events */}
+      <section style={styles.card}>
+        <h3 style={styles.sectionTitle}>⚡ KWALA Live Events</h3>
+        {events.length === 0 ? (
+          <p style={{ color: "#777" }}>No events yet</p>
+        ) : (
+          events.slice(0, 10).map((e, i) => (
+            <div key={i} style={styles.eventCard}>
+              <b style={{ color: "#ff4655" }}>{e.body.event}</b> —{" "}
+              <span style={{ color: "#ccc" }}>{JSON.stringify(e.body)}</span>
+              <div style={styles.timestamp}>{new Date(e.timestamp).toLocaleTimeString()}</div>
+            </div>
+          ))
+        )}
       </section>
 
+      {/* Interested List */}
       {showInterestedFor && (
-        <div style={{ background: "#0b0b0b", border: "1px solid #222", padding: 12, borderRadius: 10 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h4 style={{ margin: 0 }}>Interested for Request #{showInterestedFor}</h4>
-            <div>
-              <button onClick={() => { setShowInterestedFor(null); setInterestedList([]); }} style={smallBtn}>Close</button>
-            </div>
+        <section style={styles.card}>
+          <div style={styles.sectionHeader}>
+            <h4>Interested for Request #{showInterestedFor}</h4>
+            <button
+              onClick={() => {
+                setShowInterestedFor(null);
+                setInterestedList([]);
+              }}
+              style={styles.smallBtn}
+            >
+              ❌ Close
+            </button>
           </div>
-
-          <div style={{ marginTop: 12 }}>
-            {interestedList.length === 0 ? <p style={{ color: "#999" }}>No interested donors yet.</p> : (
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ background: "#1b1b1b" }}>
-                    <th style={{ padding: 8 }}>Donor</th>
-                    <th style={{ padding: 8 }}>Actions</th>
+          {interestedList.length === 0 ? (
+            <p style={{ color: "#999" }}>No interested donors yet.</p>
+          ) : (
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th>Donor</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {interestedList.map((d) => (
+                  <tr key={d}>
+                    <td>{d}</td>
+                    <td>
+                      <button onClick={() => viewDonorProfile(d)} style={styles.smallBtn}>
+                        View Profile
+                      </button>
+                      {isAdmin && (
+                        <button
+                          onClick={() => approveDonor(showInterestedFor, d)}
+                          style={{ ...styles.smallBtn, background: "#27ae60" }}
+                        >
+                          ✅ Approve
+                        </button>
+                      )}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {interestedList.map((d) => (
-                    <tr key={d} style={{ borderBottom: "1px solid #222" }}>
-                      <td style={{ padding: 8 }}>{d}</td>
-                      <td style={{ padding: 8 }}>
-                        <button onClick={() => viewDonorProfile(d)} style={smallBtn}>View Profile</button>{" "}
-                        {isAdmin && <button onClick={() => approveDonor(showInterestedFor, d)} style={{ ...smallBtn, background: "#27ae60" }}>Approve</button>}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
       )}
 
+      {/* Donor Profile */}
       {selectedDonorProfile && (
-        <div style={{ marginTop: 16, background: "#0f0f0f", padding: 12, borderRadius: 10, border: "1px solid #222" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h4 style={{ margin: 0 }}>Donor: {selectedDonorProfile.address}</h4>
-            <button onClick={() => setSelectedDonorProfile(null)} style={smallBtn}>Close</button>
+        <section style={styles.card}>
+          <div style={styles.sectionHeader}>
+            <h4>Donor: {selectedDonorProfile.address}</h4>
+            <button onClick={() => setSelectedDonorProfile(null)} style={styles.smallBtn}>
+              Close
+            </button>
           </div>
 
-          <div style={{ marginTop: 12 }}>
-            <div style={{ color: "#ccc" }}>Donations: <b>{selectedDonorProfile.donationsCount}</b></div>
-            <div style={{ color: "#ffd36b" }}>Level: <b>{selectedDonorProfile.level}</b></div>
+          <div>
+            <div style={styles.profileLine}>🧬 Donations: {selectedDonorProfile.donationsCount}</div>
+            <div style={styles.profileLine}>⭐ Level: {selectedDonorProfile.level}</div>
 
             <div style={{ marginTop: 12 }}>
               {Array.from({ length: 4 }).map((_, lvlIndex) => {
@@ -269,18 +326,24 @@ export default function Home() {
 
                 return (
                   <div key={lvlIndex} style={{ marginTop: 10 }}>
-                    <div style={{ color: "#999" }}>Level {levelNumber}</div>
-                    <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                    <div style={{ color: "#aaa" }}>Level {levelNumber}</div>
+                    <div style={styles.starsRow}>
                       {Array.from({ length: 4 }).map((__, starIndex) => {
                         const starFilled = starIndex < filled;
                         return (
-                          <div key={starIndex} style={{
-                            width: 28, height: 28, borderRadius: 6,
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            background: starFilled ? "#ffd36b" : "#1a1a1a",
-                            color: starFilled ? "#111" : "#666",
-                            border: starFilled ? "1px solid #e6b800" : "1px solid #222"
-                          }}>
+                          <div
+                            key={starIndex}
+                            style={{
+                              ...styles.star,
+                              background: starFilled
+                                ? "linear-gradient(45deg,#FFD36B,#FFAA00)"
+                                : "#1a1a1a",
+                              boxShadow: starFilled
+                                ? "0 0 8px rgba(255,211,107,0.6)"
+                                : "none",
+                              color: starFilled ? "#111" : "#555"
+                            }}
+                          >
                             ★
                           </div>
                         );
@@ -291,38 +354,129 @@ export default function Home() {
               })}
             </div>
           </div>
-        </div>
+        </section>
       )}
-
     </main>
   );
 }
 
-/* styles */
-const inputStyle = {
-  background: "#1c1c1c",
-  border: "1px solid #333",
-  borderRadius: "6px",
-  padding: "0.5rem 0.8rem",
-  color: "white",
-  width: "180px",
-};
-
-const createBtnStyle = {
-  background: "#ff4655",
-  border: "none",
-  color: "white",
-  padding: "0.6rem 1.2rem",
-  borderRadius: "8px",
-  cursor: "pointer",
-  fontWeight: "600",
-};
-
-const smallBtn = {
-  background: "#222",
-  color: "#fff",
-  padding: "6px 10px",
-  borderRadius: 6,
-  border: "1px solid #333",
-  cursor: "pointer",
+/* 🎨 GAMIFIED STYLES */
+const styles = {
+  main: {
+    background: "radial-gradient(circle at top, #0a0a0a 40%, #000 100%)",
+    color: "#e5e5e5",
+    minHeight: "100vh",
+    fontFamily: "Poppins, Orbitron, sans-serif",
+    padding: 24
+  },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20
+  },
+  title: {
+    fontSize: "2rem",
+    background: "linear-gradient(90deg,#ff4655,#ff9f1a)",
+    WebkitBackgroundClip: "text",
+    WebkitTextFillColor: "transparent",
+    fontWeight: 800,
+    textShadow: "0 0 12px rgba(255,100,80,0.5)"
+  },
+  subtitle: {
+    color: "#888",
+    fontSize: "0.9rem"
+  },
+  adminLine: {
+    fontSize: "0.75rem",
+    color: "#666",
+    marginTop: 4
+  },
+  connectBtn: {
+    background: "linear-gradient(90deg,#ff4655,#ff9f1a)",
+    border: "none",
+    color: "#fff",
+    padding: "10px 16px",
+    borderRadius: 10,
+    cursor: "pointer",
+    fontWeight: "600",
+    transition: "transform 0.2s",
+  },
+  walletBox: { display: "flex", flexDirection: "column", alignItems: "flex-end" },
+  walletAddr: {
+    background: "#111",
+    padding: "6px 12px",
+    borderRadius: 8,
+    marginTop: 6,
+    border: "1px solid #333",
+    fontSize: 13
+  },
+  card: {
+    background: "linear-gradient(180deg,#111,#181818)",
+    padding: 18,
+    borderRadius: 12,
+    border: "1px solid rgba(255,255,255,0.08)",
+    marginBottom: 20,
+    boxShadow: "0 0 20px rgba(255,70,85,0.1)"
+  },
+  sectionTitle: { fontSize: "1.2rem", marginBottom: 10, color: "#FFD36B" },
+  input: {
+    background: "#1c1c1c",
+    border: "1px solid #333",
+    borderRadius: 6,
+    padding: "0.6rem 1rem",
+    color: "#fff",
+    width: "180px",
+    outline: "none"
+  },
+  form: { display: "flex", flexWrap: "wrap", gap: "1rem" },
+  primaryBtn: {
+    background: "linear-gradient(90deg,#ff4655,#ff9f1a)",
+    border: "none",
+    color: "white",
+    padding: "0.7rem 1.4rem",
+    borderRadius: 10,
+    cursor: "pointer",
+    fontWeight: "700",
+    transition: "all 0.2s ease",
+  },
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+    color: "#ddd"
+  },
+  smallBtn: {
+    background: "#222",
+    color: "#fff",
+    padding: "6px 10px",
+    borderRadius: 6,
+    border: "1px solid #333",
+    cursor: "pointer",
+    transition: "all 0.2s ease"
+  },
+  eventCard: {
+    background: "#1a1a1a",
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderLeft: "3px solid #ff4655"
+  },
+  timestamp: { fontSize: 12, color: "#555", marginTop: 4 },
+  sectionHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10
+  },
+  profileLine: { color: "#ccc", marginBottom: 6 },
+  starsRow: { display: "flex", gap: 6, marginTop: 6 },
+  star: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    transition: "all 0.3s ease"
+  }
 };
