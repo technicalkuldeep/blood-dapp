@@ -63,6 +63,30 @@
     "type": "function"
   },
   {
+    "inputs": [{ "internalType": "uint256", "name": "id", "type": "uint256" }],
+    "name": "getInterested",
+    "outputs": [{ "internalType": "address[]", "name": "", "type": "address[]" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "address", "name": "donor", "type": "address" }],
+    "name": "getDonorProfile",
+    "outputs": [
+      {
+        "components": [
+          { "internalType": "uint256", "name": "donationsCount", "type": "uint256" },
+          { "internalType": "uint8", "name": "level", "type": "uint8" }
+        ],
+        "internalType": "struct BloodRegistry.DonorProfile",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "anonymous": false,
     "inputs": [
       { "indexed": true, "internalType": "uint256", "name": "id", "type": "uint256" },
