@@ -1,3 +1,4 @@
+// app/page.js
 "use client";
 
 import { useEffect, useState } from "react";
@@ -9,6 +10,7 @@ import {
   getDonorProfile,
   getInterested,
   isAdminAddress,
+  CONFIG
 } from "./lib/eth";
 
 export default function Home() {
@@ -21,7 +23,6 @@ export default function Home() {
   const [interestedList, setInterestedList] = useState([]);
   const [selectedDonorProfile, setSelectedDonorProfile] = useState(null);
 
-  // --- wallet connect + admin detect
   async function connectWallet() {
     try {
       const addr = await getConnectedAddress();
@@ -32,7 +33,6 @@ export default function Home() {
     }
   }
 
-  // --- fetch on-chain requests
   async function fetchRequests() {
     try {
       const provider = getProvider();
@@ -61,7 +61,6 @@ export default function Home() {
     }
   }
 
-  // --- poll KWALA events
   async function fetchEvents() {
     try {
       const res = await fetch("/api/events");
@@ -80,7 +79,6 @@ export default function Home() {
     return () => clearInterval(t);
   }, []);
 
-  // --- create request (admin)
   async function createRequest(e) {
     e.preventDefault();
     const form = new FormData(e.target);
@@ -101,7 +99,6 @@ export default function Home() {
     }
   }
 
-  // --- open interested list for a request (admin + view)
   async function openInterested(requestId) {
     setShowInterestedFor(requestId);
     try {
@@ -113,7 +110,6 @@ export default function Home() {
     }
   }
 
-  // --- admin approve donor (calls contract.approveInterest)
   async function approveDonor(reqId, donorAddr) {
     try {
       const signer = await getSigner();
@@ -127,7 +123,6 @@ export default function Home() {
     }
   }
 
-  // --- view donor profile
   async function viewDonorProfile(addr) {
     try {
       const p = await getDonorProfile(addr);
@@ -143,7 +138,7 @@ export default function Home() {
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <div>
           <h1 style={{ margin: 0 }}>🩸 Blood Donation Dashboard</h1>
-          <div style={{ color: "#aaa", fontSize: 13 }}>KWALA Integrated — Admin: {process.env.NEXT_PUBLIC_ADMIN_ADDRESS}</div>
+          <div style={{ color: "#aaa", fontSize: 13 }}>KWALA Integrated — Admin: {CONFIG.ADMIN}</div>
         </div>
 
         <div>
@@ -160,7 +155,6 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Create Request Form — admin-only */}
       {isAdmin && (
         <section style={{ background: "#141414", padding: 16, borderRadius: 12, border: "1px solid #222", marginBottom: 20 }}>
           <h2 style={{ fontSize: "1.2rem", marginBottom: "1rem" }}>Create Blood Request</h2>
@@ -175,7 +169,6 @@ export default function Home() {
         </section>
       )}
 
-      {/* Open Requests */}
       <section style={{ marginBottom: 20, background: "#141414", padding: 16, borderRadius: 12, border: "1px solid #222" }}>
         <h2 style={{ marginTop: 0 }}>Open Requests</h2>
 
@@ -210,7 +203,6 @@ export default function Home() {
         )}
       </section>
 
-      {/* KWALA events */}
       <section style={{ background: "#141414", padding: 16, borderRadius: 12, border: "1px solid #222", marginBottom: 20 }}>
         <h3 style={{ marginTop: 0 }}>⚡ KWALA Live Events</h3>
         {events.length === 0 ? <p style={{ color: "#777" }}>No events yet</p> : events.slice(0, 10).map((e, i) => (
@@ -221,7 +213,6 @@ export default function Home() {
         ))}
       </section>
 
-      {/* Interested panel */}
       {showInterestedFor && (
         <div style={{ background: "#0b0b0b", border: "1px solid #222", padding: 12, borderRadius: 10 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -257,7 +248,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Donor profile */}
       {selectedDonorProfile && (
         <div style={{ marginTop: 16, background: "#0f0f0f", padding: 12, borderRadius: 10, border: "1px solid #222" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
