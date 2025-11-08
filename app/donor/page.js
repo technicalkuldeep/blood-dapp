@@ -7,7 +7,7 @@ import {
   getContract,
   getSigner,
   getConnectedAddress,
-  getDonorProfile
+  getDonorProfile,
 } from "../lib/eth";
 
 export default function DonorDashboard() {
@@ -16,6 +16,8 @@ export default function DonorDashboard() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [showToast, setShowToast] = useState(null);
+  const [liveEvents, setLiveEvents] = useState([]);
+  const [popupData, setPopupData] = useState(null);
 
   async function connect() {
     try {
@@ -69,7 +71,6 @@ export default function DonorDashboard() {
   useEffect(() => {
     connect();
     fetchRequests();
-    // refresh requests every 20s
     const t = setInterval(fetchRequests, 20000);
     return () => clearInterval(t);
   }, []);
@@ -90,6 +91,30 @@ export default function DonorDashboard() {
       setTimeout(() => setShowToast(null), 6000);
     }
   }
+
+  // Listen for Koala donor events via SSE
+  useEffect(() => {
+    const ev = new EventSource("/api/donor-events");
+    ev.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        setLiveEvents((prev) => [data, ...prev.slice(0, 9)]);
+
+        // show celebration if the event donor matches connected wallet
+        if (address && data.donor && data.donor.toLowerCase() === address.toLowerCase()) {
+          setPopupData(data);
+          setTimeout(() => setPopupData(null), 6000);
+        }
+      } catch (err) {
+        console.error("SSE parse error", err);
+      }
+    };
+    ev.onerror = (err) => {
+      // console.warn("SSE error", err);
+      // EventSource will attempt reconnect automatically
+    };
+    return () => ev.close();
+  }, [address]);
 
   function renderStarsForLevel(levelNumber) {
     if (!profile) return null;
@@ -114,7 +139,6 @@ export default function DonorDashboard() {
     );
   }
 
-  // compute donor XP % inside current level for animated bar
   function xpForLevel(levelNumber) {
     if (!profile) return 0;
     const donations = profile.donationsCount;
@@ -144,10 +168,10 @@ export default function DonorDashboard() {
         </div>
       </header>
 
-      {/* Layout columns */}
       <div style={G.styles.grid}>
-        {/* Left: Profile card */}
+        {/* Left Column */}
         <aside style={G.styles.left}>
+          {/* Profile card */}
           <div style={G.styles.card}>
             <div style={G.styles.profileHeader}>
               <div style={G.styles.avatar}>🩸</div>
@@ -163,7 +187,7 @@ export default function DonorDashboard() {
                 <div style={{ color: "#FFD36B", fontWeight: 800 }}>{profile ? profile.level : 0}</div>
               </div>
 
-              {/* XP progress */}
+              {/* XP Progress */}
               <div style={{ marginTop: 10 }}>
                 {Array.from({ length: 4 }).map((_, lv) => {
                   const levelNum = lv + 1;
@@ -174,44 +198,29 @@ export default function DonorDashboard() {
                         <div style={{ color: "#999", fontSize: 12 }}>{xpForLevel(levelNum)}%</div>
                       </div>
                       <div style={G.styles.progressTrack}>
-                        <div style={{
-                          ...G.styles.progressFill,
-                          width: `${xpForLevel(levelNum)}%`,
-                          boxShadow: `0 6px 20px rgba(255,100,120, ${xpForLevel(levelNum)/200})`
-                        }} />
+                        <div
+                          style={{
+                            ...G.styles.progressFill,
+                            width: `${xpForLevel(levelNum)}%`,
+                            boxShadow: `0 6px 20px rgba(255,100,120, ${xpForLevel(levelNum) / 200})`,
+                          }}
+                        />
                       </div>
                     </div>
                   );
                 })}
               </div>
 
-              {/* Stars */}
               <div style={{ marginTop: 8 }}>
                 <div style={{ color: "#aaa", marginBottom: 8 }}>Stars in current level</div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  {profile ? (
-                    <>
-                      {renderStarsForLevel(profile.level)}
-                    </>
-                  ) : (
-                    <div style={{ color: "#777" }}>—</div>
-                  )}
+                  {profile ? renderStarsForLevel(profile.level) : <div style={{ color: "#777" }}>—</div>}
                 </div>
-              </div>
-
-              {/* CTA */}
-              <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
-                <button style={G.styles.primaryBtn} onClick={() => { if (!address) connect(); else { navigator.clipboard?.writeText(address); setShowToast({ title: "Address copied", message: shorten(address), tone: "success" }); setTimeout(()=>setShowToast(null),3000); } }}>
-                  {address ? "Copy Address" : "Connect Wallet"}
-                </button>
-                <button style={G.styles.ghostBtn} onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" })}>
-                  🔎 Explore Requests
-                </button>
               </div>
             </div>
           </div>
 
-          {/* Achievements / badges */}
+          {/* Achievements */}
           <div style={{ marginTop: 18, ...G.styles.card }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontWeight: 800 }}>🏅 Achievements</div>
@@ -219,80 +228,92 @@ export default function DonorDashboard() {
             </div>
 
             <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              {/* small badges */}
               <Badge label="First Donation" unlocked={profile && profile.donationsCount >= 1} />
               <Badge label="Level 2" unlocked={profile && profile.level >= 2} />
               <Badge label="4 Donations" unlocked={profile && profile.donationsCount >= 4} />
               <Badge label="Level 4" unlocked={profile && profile.level >= 4} />
             </div>
           </div>
+
+          {/* ⚡ Live Approvals Feed */}
+          <div style={{ marginTop: 18, ...G.styles.card }}>
+            <h3>⚡ Live Approvals Feed</h3>
+            {liveEvents.length === 0 ? (
+              <div style={{ color: "#777" }}>No recent approvals yet</div>
+            ) : (
+              liveEvents.map((e, i) => (
+                <div key={i} style={{ background: "#1b1b1b", padding: 10, borderRadius: 8, marginTop: 8 }}>
+                  <div style={{ color: "#FFD36B" }}>✅ Donation Approved</div>
+                  <div style={{ fontSize: 13, color: "#ccc", marginTop: 4 }}>
+                    Request ID: {e.id} | Donor: {shorten(e.donor)}<br />
+                    Units: {e.unitsApproved} | NFT: #{e.nftId}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </aside>
 
-        {/* Right: Requests list */}
+        {/* Right Column: Requests */}
         <section style={G.styles.right}>
           <div style={G.styles.card}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h2 style={{ margin: 0, color: "#FFD36B" }}>Active Requests</h2>
-              <div style={{ color: "#888", fontSize: 13 }}>{loading ? "Loading…" : `${requests.length} open`}</div>
-            </div>
-
-            <div style={{ marginTop: 12 }}>
-              {loading ? (
-                <div style={{ color: "#777" }}>Fetching on-chain requests…</div>
-              ) : requests.length === 0 ? (
-                <div style={{ color: "#777" }}>No open requests at the moment</div>
-              ) : (
-                <div style={{ display: "grid", gap: 12 }}>
-                  {requests.map(r => (
-                    <div key={r.id} style={G.styles.requestCard}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                          <div style={G.styles.reqBadge}>{r.bloodGroup}</div>
-                          <div>
-                            <div style={{ fontWeight: 700 }}>{r.location}</div>
-                            <div style={{ color: "#999", fontSize: 12 }}>Req #{r.id} • Contact: {r.contact}</div>
-                          </div>
-                        </div>
-
-                        <div style={{ textAlign: "right" }}>
-                          <div style={{ fontWeight: 800, color: r.status === "Open" ? "#FFD36B" : "#2ecc71" }}>{r.status}</div>
-                          <div style={{ color: "#aaa", marginTop: 6 }}>{r.quantity} unit{r.quantity > 1 ? "s" : ""}</div>
+            <h2 style={{ color: "#FFD36B" }}>Active Requests</h2>
+            {loading ? (
+              <p>Loading…</p>
+            ) : requests.length === 0 ? (
+              <p>No open requests</p>
+            ) : (
+              <div style={{ display: "grid", gap: 12 }}>
+                {requests.map((r) => (
+                  <div key={r.id} style={G.styles.requestCard}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                        <div style={G.styles.reqBadge}>{r.bloodGroup}</div>
+                        <div>
+                          <div style={{ fontWeight: 700 }}>{r.location}</div>
+                          <div style={{ color: "#999", fontSize: 12 }}>Req #{r.id} • Contact: {r.contact}</div>
                         </div>
                       </div>
-
-                      <div style={{ display: "flex", gap: 10, marginTop: 12, justifyContent: "flex-end" }}>
-                        <button style={G.styles.ghostBtnSmall} onClick={() => alert(`Contact: ${r.contact}`)}>📞 Contact</button>
-                        <button style={G.styles.primaryBtn} onClick={() => expressInterest(r.id)}>❤️ I'm Interested</button>
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontWeight: 800, color: r.status === "Open" ? "#FFD36B" : "#2ecc71" }}>{r.status}</div>
+                        <div style={{ color: "#aaa", marginTop: 6 }}>{r.quantity} units</div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Quick tips / leaderboard teaser */}
-          <div style={{ marginTop: 14, ...G.styles.card }}>
-            <div style={{ fontWeight: 800 }}>🔥 Hot Tip</div>
-            <div style={{ color: "#aaa", marginTop: 8 }}>
-              Donate often to level up — each 1 unit = 1 donation point. Reach Level 4 to earn special badges and recognition on the Leaderboard.
-            </div>
+                    <div style={{ display: "flex", gap: 10, marginTop: 12, justifyContent: "flex-end" }}>
+                      <button style={G.styles.ghostBtnSmall} onClick={() => alert(`Contact: ${r.contact}`)}>📞 Contact</button>
+                      <button style={G.styles.primaryBtn} onClick={() => expressInterest(r.id)}>❤️ I'm Interested</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
       </div>
 
-      {/* Floating toast */}
+      {/* Celebration popup when user's donation approved */}
+      {popupData && (
+        <div style={{
+          position: "fixed", right: 20, top: 20,
+          background: "linear-gradient(180deg,#111,#141414)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          padding: "14px 18px",
+          borderRadius: 12, zIndex: 9999, color: "#fff", boxShadow: "0 0 30px rgba(255,70,85,0.2)"
+        }}>
+          <div style={{ fontSize: 24 }}>🏅</div>
+          <div><b>Congratulations!</b> Your donation was approved 🎉</div>
+          <div style={{ color: "#aaa", fontSize: 12, marginTop: 6 }}>
+            NFT ID: #{popupData.nftId} | Units: {popupData.unitsApproved}
+          </div>
+        </div>
+      )}
+
       {showToast && (
         <div style={{
-          position: "fixed",
-          right: 20,
-          bottom: 20,
+          position: "fixed", right: 20, bottom: 20,
           background: showToast.tone === "error" ? "#3b1a1a" : "#0d1710",
-          color: "#fff",
-          padding: "12px 16px",
-          borderRadius: 12,
-          boxShadow: "0 10px 30px rgba(0,0,0,0.6)",
-          border: "1px solid rgba(255,255,255,0.04)"
+          color: "#fff", padding: "12px 16px", borderRadius: 12,
+          boxShadow: "0 10px 30px rgba(0,0,0,0.6)", border: "1px solid rgba(255,255,255,0.04)"
         }}>
           <div style={{ fontWeight: 700 }}>{showToast.title}</div>
           <div style={{ fontSize: 13, color: "#ccc", marginTop: 6 }}>{showToast.message}</div>
@@ -327,134 +348,28 @@ function Badge({ label, unlocked }) {
   );
 }
 
-/* ===== Helper & styles (kept local to file) ===== */
 function shorten(a = "") {
-  if (!a) return "";
-  return `${a.slice(0, 6)}…${a.slice(-4)}`;
+  return a ? `${a.slice(0, 6)}…${a.slice(-4)}` : "";
 }
 
 const G = {
   styles: {
-    main: {
-      background: "radial-gradient(circle at top, #070707 30%, #000 100%)",
-      color: "#e9e9e9",
-      minHeight: "100vh",
-      fontFamily: "Poppins, Inter, sans-serif",
-      padding: 24
-    },
-    header: {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: 22
-    },
-    title: {
-      fontSize: 22,
-      fontWeight: 800,
-      background: "linear-gradient(90deg,#ff4655,#ff9f1a)",
-      WebkitBackgroundClip: "text",
-      WebkitTextFillColor: "transparent",
-    },
+    main: { background: "radial-gradient(circle at top, #070707 30%, #000 100%)", color: "#e9e9e9", minHeight: "100vh", fontFamily: "Poppins, Inter, sans-serif", padding: 24 },
+    header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 22 },
+    title: { fontSize: 22, fontWeight: 800, background: "linear-gradient(90deg,#ff4655,#ff9f1a)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" },
     subtitle: { color: "#9a9a9a", marginTop: 6 },
-    addrBox: {
-      background: "#111",
-      border: "1px solid rgba(255,255,255,0.03)",
-      padding: "8px 12px",
-      borderRadius: 10,
-      textAlign: "right"
-    },
+    addrBox: { background: "#111", border: "1px solid rgba(255,255,255,0.03)", padding: "8px 12px", borderRadius: 10, textAlign: "right" },
     addrText: { color: "#fff", fontWeight: 700 },
-    grid: {
-      display: "grid",
-      gridTemplateColumns: "320px 1fr",
-      gap: 18,
-      alignItems: "start"
-    },
-    left: { },
-    right: { },
-
-    card: {
-      background: "linear-gradient(180deg,#0f0f10,#18181a)",
-      borderRadius: 12,
-      padding: 16,
-      border: "1px solid rgba(255,255,255,0.03)",
-      boxShadow: "0 6px 30px rgba(0,0,0,0.6)"
-    },
-
+    grid: { display: "grid", gridTemplateColumns: "320px 1fr", gap: 18, alignItems: "start" },
+    card: { background: "linear-gradient(180deg,#0f0f10,#18181a)", borderRadius: 12, padding: 16, border: "1px solid rgba(255,255,255,0.03)", boxShadow: "0 6px 30px rgba(0,0,0,0.6)" },
     profileHeader: { display: "flex", gap: 12, alignItems: "center" },
-    avatar: {
-      width: 64, height: 64, borderRadius: 14, background: "linear-gradient(90deg,#1b1b1b,#2a0f2f)",
-      display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, boxShadow: "0 8px 30px rgba(255,70,85,0.06)"
-    },
+    avatar: { width: 64, height: 64, borderRadius: 14, background: "linear-gradient(90deg,#1b1b1b,#2a0f2f)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 },
     profileName: { fontWeight: 800, fontSize: 16 },
-
-    primaryBtn: {
-      background: "linear-gradient(90deg,#ff4655,#ff9f1a)",
-      color: "#fff",
-      border: "none",
-      padding: "10px 14px",
-      borderRadius: 10,
-      cursor: "pointer",
-      fontWeight: 700,
-      boxShadow: "0 10px 30px rgba(255,70,85,0.06)"
-    },
-    ghostBtn: {
-      background: "transparent",
-      border: "1px solid rgba(255,255,255,0.04)",
-      color: "#ddd",
-      padding: "9px 12px",
-      borderRadius: 10,
-      cursor: "pointer"
-    },
-    ghostBtnSmall: {
-      background: "transparent",
-      border: "1px solid rgba(255,255,255,0.04)",
-      color: "#ddd",
-      padding: "8px 10px",
-      borderRadius: 8,
-      cursor: "pointer"
-    },
-    ctaBtn: {
-      background: "linear-gradient(90deg,#ff4655,#ff9f1a)",
-      color: "#fff",
-      border: "none",
-      padding: "10px 16px",
-      borderRadius: 10,
-      cursor: "pointer",
-      fontWeight: 700
-    },
-
-    // request card
-    requestCard: {
-      background: "linear-gradient(180deg,#101010,#141214)",
-      padding: 14,
-      borderRadius: 10,
-      border: "1px solid rgba(255,255,255,0.03)",
-      boxShadow: "0 10px 30px rgba(0,0,0,0.6)",
-      display: "flex",
-      flexDirection: "column"
-    },
-    reqBadge: {
-      background: "linear-gradient(90deg,#1b1b1b,#2a0f2f)",
-      padding: "6px 10px",
-      borderRadius: 8,
-      color: "#ff4655",
-      fontWeight: 800,
-      border: "1px solid rgba(255,255,255,0.02)"
-    },
-
-    // XP bar
-    progressTrack: {
-      height: 10,
-      background: "#0e0e0e",
-      borderRadius: 999,
-      border: "1px solid rgba(255,255,255,0.02)",
-      overflow: "hidden"
-    },
-    progressFill: {
-      height: "100%",
-      background: "linear-gradient(90deg,#ff4655,#ffd36b)",
-      transition: "width 600ms cubic-bezier(.2,.9,.2,1)"
-    }
-  }
+    primaryBtn: { background: "linear-gradient(90deg,#ff4655,#ff9f1a)", color: "#fff", border: "none", padding: "10px 14px", borderRadius: 10, cursor: "pointer", fontWeight: 700 },
+    ghostBtnSmall: { background: "transparent", border: "1px solid rgba(255,255,255,0.04)", color: "#ddd", padding: "8px 10px", borderRadius: 8, cursor: "pointer" },
+    reqBadge: { background: "linear-gradient(90deg,#1b1b1b,#2a0f2f)", padding: "6px 10px", borderRadius: 8, color: "#ff4655", fontWeight: 800 },
+    progressTrack: { height: 10, background: "#0e0e0e", borderRadius: 999, border: "1px solid rgba(255,255,255,0.02)", overflow: "hidden" },
+    progressFill: { height: "100%", background: "linear-gradient(90deg,#ff4655,#ffd36b)", transition: "width 600ms cubic-bezier(.2,.9,.2,1)" },
+    ctaBtn: { background: "linear-gradient(90deg,#ff4655,#ff9f1a)", color: "#fff", border: "none", padding: "10px 16px", borderRadius: 10, cursor: "pointer", fontWeight: 700 }
+  },
 };
