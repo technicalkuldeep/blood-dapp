@@ -92,28 +92,36 @@ export default function DonorDashboard() {
     }
   }
 
-  // Listen for Koala donor events via SSE
+  // Poll /api/donor-events (history) every ~4.5s
   useEffect(() => {
-    const ev = new EventSource("/api/donor-events");
-    ev.onmessage = (e) => {
+    let mounted = true;
+    async function pollEvents() {
       try {
-        const data = JSON.parse(e.data);
-        setLiveEvents((prev) => [data, ...prev.slice(0, 9)]);
+        const res = await fetch("/api/donor-events");
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!json.ok) return;
+        const events = Array.isArray(json.events) ? json.events : [];
+        if (!mounted) return;
+        setLiveEvents(events.slice(0, 20));
 
-        // show celebration if the event donor matches connected wallet
-        if (address && data.donor && data.donor.toLowerCase() === address.toLowerCase()) {
-          setPopupData(data);
-          setTimeout(() => setPopupData(null), 6000);
+        if (address && events.length > 0) {
+          const newest = events[0];
+          if (newest.donor && newest.donor.toLowerCase() === address.toLowerCase()) {
+            setPopupData(newest);
+            setTimeout(() => setPopupData(null), 6000);
+            // refresh profile because donations might have changed
+            fetchProfile(address);
+          }
         }
       } catch (err) {
-        console.error("SSE parse error", err);
+        console.error("poll events error", err);
       }
-    };
-    ev.onerror = (err) => {
-      // console.warn("SSE error", err);
-      // EventSource will attempt reconnect automatically
-    };
-    return () => ev.close();
+    }
+
+    pollEvents();
+    const iv = setInterval(pollEvents, 4500);
+    return () => { mounted = false; clearInterval(iv); };
   }, [address]);
 
   function renderStarsForLevel(levelNumber) {
